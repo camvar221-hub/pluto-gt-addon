@@ -12,29 +12,40 @@ jobs:
           cat > manifest.json <<'JSON'
           {
             "id": "com.camvar.plutogt.real",
-            "version": "2.0.0",
+            "version": "2.0.1",
             "name": "Pluto TV GT - Real",
-            "description": "20 canales reales Pluto TV Guatemala",
+            "description": "Canales reales Pluto TV Guatemala con nombres",
             "resources": ["catalog", "meta", "stream"],
             "types": ["tv"],
             "catalogs": [{"type": "tv", "id": "pluto_gt", "name": "Pluto TV GT"}],
             "idPrefixes": ["pluto_"]
           }
           JSON
-          IDS="5d7a3fdbd6c8440b4b514fa2 5d40bebc5e3d2750a2239d7e 5d40e1b84b933a3a2d72de2c 5d40e3d84b933a3a2d72de42 60802de3fd2d7000763bb83 5dc408aeb71beb0008255b3b 5f1213a75c3af90007c90c00 5f26d2d0c6cc360007a30a2b 5e4b9e4b54b6b60007c6b6c4 5d40e5a14b933a3a2d72de72"
+          cat > /tmp/channels.txt <<'EOF'
+          5d7a3fdbd6c8440b4b514fa2|Pluto Cine Acción
+          5d40bebc5e3d2750a2239d7e|Pluto Cine Drama
+          5d40e1b84b933a3a2d72de2c|Pluto Cine Comedia
+          5d40e3d84b933a3a2d72de42|Pluto Cine Terror
+          60802de3fd2d7000763bb83|Pluto Cine Estelar
+          5dc408aeb71beb0008255b3b|Pluto TV Series
+          5f1213a75c3af90007c90c00|MTV Pluto TV
+          5f26d2d0c6cc360007a30a2b|CSI Miami
+          5e4b9e4b54b6b60007c6b6c4|NCIS
+          5d40e5a14b933a3a2d72de72|Pluto Cine Romance
+          EOF
           echo '{"metas":[' > catalog/tv/pluto_gt.json
           FIRST=1
-          for ID in $IDS; do
+          while IFS='|' read ID NAME; do
             PID="pluto_$ID"
             [ $FIRST -eq 0 ] && echo "," >> catalog/tv/pluto_gt.json
-            echo "{\"id\":\"$PID\",\"type\":\"tv\",\"name\":\"$PID\",\"poster\":\"https://images.pluto.tv/channels/$ID/colorLogoPNG.png\"}" >> catalog/tv/pluto_gt.json
-            echo "{\"meta\":{\"id\":\"$PID\",\"type\":\"tv\",\"name\":\"$PID\",\"poster\":\"https://images.pluto.tv/channels/$ID/colorLogoPNG.png\",\"videos\":[{\"id\":\"$PID\",\"title\":\"$PID\"}]}}" > meta/tv/$PID.json
-            echo "{\"streams\":[{\"url\":\"https://service-stitcher.clusters.pluto.tv/v1/stitch/embed/hls/channel/$ID/master.m3u8?deviceId=web&deviceModel=web&deviceVersion=1.0&appVersion=1.0&deviceType=web&embedPartner=samsung-tvplus\",\"title\":\"Pluto GT\"}]}" > stream/tv/$PID.json
+            echo "{\"id\":\"$PID\",\"type\":\"tv\",\"name\":\"$NAME\",\"poster\":\"https://images.pluto.tv/channels/$ID/colorLogoPNG.png\",\"posterShape\":\"landscape\",\"background\":\"https://images.pluto.tv/channels/$ID/featuredImage.jpg?fill=blur&fit=fill&fm=jpg&h=500&q=70&w=700\"}" >> catalog/tv/pluto_gt.json
+            echo "{\"meta\":{\"id\":\"$PID\",\"type\":\"tv\",\"name\":\"$NAME\",\"poster\":\"https://images.pluto.tv/channels/$ID/colorLogoPNG.png\",\"background\":\"https://images.pluto.tv/channels/$ID/featuredImage.jpg\",\"logo\":\"https://images.pluto.tv/channels/$ID/colorLogoPNG.png\",\"description\":\"Canal en vivo $NAME - Pluto TV Guatemala\",\"videos\":[{\"id\":\"$PID:1\",\"title\":\"En Vivo - $NAME\",\"released\":\"2024-01-01\"}]}}" > meta/tv/$PID.json
+            echo "{\"streams\":[{\"name\":\"Pluto TV\",\"title\":\"$NAME GT - En Vivo\",\"url\":\"https://service-stitcher.clusters.pluto.tv/v1/stitch/embed/hls/channel/$ID/master.m3u8?deviceId=web&deviceModel=web&deviceVersion=1.0&appVersion=1.0&deviceType=web&embedPartner=samsung-tvplus\",\"behaviorHints\":{\"notWebReady\":false,\"bingeGroup\":\"pluto-gt\"}}]}" > stream/tv/$PID.json
             FIRST=0
-          done
+          done < /tmp/channels.txt
           echo ']}' >> catalog/tv/pluto_gt.json
           git config user.name "bot"
           git config user.email "bot@bot.com"
           git add .
-          git commit -m "Addon real" || true
+          git commit -m "Nombres reales fix" || true
           git push
