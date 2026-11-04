@@ -1,10 +1,24 @@
 {
   "id": "com.camvar.plutogt.real",
-  "version": "2.0.1",
-  "name": "Pluto TV GT - Real",
-  "description": "Canales reales Pluto TV Guatemala con nombres",
-  "resources": ["catalog", "meta", "stream"],
-  "types": ["tv"],
-  "catalogs": [{"type": "tv", "id": "pluto_gt", "name": "Pluto TV GT"}],
-  "idPrefixes": ["pluto_"]
+  "version": "3.0.0",
+  "name": "Pluto TV GT - FINAL FIX",
+  "description": "40 canales Pluto TV USA con links firmados - funciona en GT",
+  "resources": [
+    "catalog",
+    "meta",
+    "stream"
+  ],
+  "types": [
+    "tv"
+  ],
+  "catalogs": [
+    {
+      "type": "tv",
+      "id": "pluto_gt",
+      "name": "Pluto TV"
+    }
+  ],
+  "idPrefixes": [
+    "pluto_"
+  ]
 }
