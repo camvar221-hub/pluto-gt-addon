@@ -1,4 +1,4 @@
-name: Build Real Pluto GT
+name: Build Real Pluto GT - FINAL
 on: [push]
 jobs:
   build:
@@ -7,45 +7,98 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v3
-      - run: |
+      - name: Build from working M3U
+        run: |
           mkdir -p catalog/tv meta/tv stream/tv
-          cat > manifest.json <<'JSON'
-          {
+          curl -sL https://i.mjh.nz/PlutoTV/us.m3u8 -o pluto.m3u
+          
+          cat > build.py <<'PY'
+          import re
+          metas=[]
+          catalog=[]
+          count=0
+          with open('pluto.m3u', 'r', encoding='utf-8', errors='ignore') as f:
+              lines=f.readlines()
+          i=0
+          while i < len(lines):
+            line=lines[i].strip()
+            if line.startswith('#EXTINF'):
+              name_match=re.search(r',(.+)$', line)
+              name=name_match.group(1).strip() if name_match else f"Canal {count}"
+              logo_match=re.search(r'tvg-logo="([^"]+)"', line)
+              logo=logo_match.group(1) if logo_match else ""
+              id_match=re.search(r'tvg-id="([^"]+)"', line)
+              tvg_id=id_match.group(1) if id_match else f"ch{count}"
+              # next line is URL
+              if i+1 < len(lines):
+                url=lines[i+1].strip()
+                if url.startswith('http'):
+                  pid=f"pluto_{tvg_id.replace('.','_')}_{count}"
+                  pid=re.sub(r'[^a-zA-Z0-9_]', '_', pid)
+                  # limit to 40 channels para que no sea gigante
+                  if count < 40:
+                    metas.append((pid,name,logo,url))
+                  count+=1
+            i+=1
+
+          # manifest
+          import json, os
+          manifest={
             "id": "com.camvar.plutogt.real",
-            "version": "2.0.1",
-            "name": "Pluto TV GT - Real",
-            "description": "Canales reales Pluto TV Guatemala con nombres",
-            "resources": ["catalog", "meta", "stream"],
+            "version": "3.0.0",
+            "name": "Pluto TV GT - FINAL FIX",
+            "description": "40 canales Pluto TV USA con links firmados - funciona en GT",
+            "resources": ["catalog","meta","stream"],
             "types": ["tv"],
-            "catalogs": [{"type": "tv", "id": "pluto_gt", "name": "Pluto TV GT"}],
+            "catalogs": [{"type":"tv","id":"pluto_gt","name":"Pluto TV"}],
             "idPrefixes": ["pluto_"]
           }
-          JSON
-          cat > /tmp/channels.txt <<'EOF'
-          5d7a3fdbd6c8440b4b514fa2|Pluto Cine Acción
-          5d40bebc5e3d2750a2239d7e|Pluto Cine Drama
-          5d40e1b84b933a3a2d72de2c|Pluto Cine Comedia
-          5d40e3d84b933a3a2d72de42|Pluto Cine Terror
-          60802de3fd2d7000763bb83|Pluto Cine Estelar
-          5dc408aeb71beb0008255b3b|Pluto TV Series
-          5f1213a75c3af90007c90c00|MTV Pluto TV
-          5f26d2d0c6cc360007a30a2b|CSI Miami
-          5e4b9e4b54b6b60007c6b6c4|NCIS
-          5d40e5a14b933a3a2d72de72|Pluto Cine Romance
-          EOF
-          echo '{"metas":[' > catalog/tv/pluto_gt.json
-          FIRST=1
-          while IFS='|' read ID NAME; do
-            PID="pluto_$ID"
-            [ $FIRST -eq 0 ] && echo "," >> catalog/tv/pluto_gt.json
-            echo "{\"id\":\"$PID\",\"type\":\"tv\",\"name\":\"$NAME\",\"poster\":\"https://images.pluto.tv/channels/$ID/colorLogoPNG.png\",\"posterShape\":\"landscape\",\"background\":\"https://images.pluto.tv/channels/$ID/featuredImage.jpg?fill=blur&fit=fill&fm=jpg&h=500&q=70&w=700\"}" >> catalog/tv/pluto_gt.json
-            echo "{\"meta\":{\"id\":\"$PID\",\"type\":\"tv\",\"name\":\"$NAME\",\"poster\":\"https://images.pluto.tv/channels/$ID/colorLogoPNG.png\",\"background\":\"https://images.pluto.tv/channels/$ID/featuredImage.jpg\",\"logo\":\"https://images.pluto.tv/channels/$ID/colorLogoPNG.png\",\"description\":\"Canal en vivo $NAME - Pluto TV Guatemala\",\"videos\":[{\"id\":\"$PID:1\",\"title\":\"En Vivo - $NAME\",\"released\":\"2024-01-01\"}]}}" > meta/tv/$PID.json
-            echo "{\"streams\":[{\"name\":\"Pluto TV\",\"title\":\"$NAME GT - En Vivo\",\"url\":\"https://service-stitcher.clusters.pluto.tv/v1/stitch/embed/hls/channel/$ID/master.m3u8?deviceId=web&deviceModel=web&deviceVersion=1.0&appVersion=1.0&deviceType=web&embedPartner=samsung-tvplus\",\"behaviorHints\":{\"notWebReady\":false,\"bingeGroup\":\"pluto-gt\"}}]}" > stream/tv/$PID.json
-            FIRST=0
-          done < /tmp/channels.txt
-          echo ']}' >> catalog/tv/pluto_gt.json
+          with open('manifest.json','w') as out:
+            json.dump(manifest,out,indent=2)
+
+          catalog_metas=[]
+          for pid,name,logo,url in metas:
+            catalog_metas.append({
+              "id": pid,
+              "type": "tv",
+              "name": name,
+              "poster": logo,
+              "posterShape": "landscape"
+            })
+            meta_obj={
+              "meta": {
+                "id": pid,
+                "type": "tv",
+                "name": name,
+                "poster": logo,
+                "logo": logo,
+                "description": f"{name} - En vivo Pluto TV",
+                "videos": [{"id": f"{pid}:1", "title": f"En Vivo - {name}", "released": "2024-01-01"}]
+              }
+            }
+            stream_obj={
+              "streams": [{
+                "name": "Pluto TV",
+                "title": f"{name} - En Vivo",
+                "url": url,
+                "behaviorHints": {"notWebReady": False}
+              }]
+            }
+            os.makedirs('meta/tv', exist_ok=True)
+            os.makedirs('stream/tv', exist_ok=True)
+            with open(f'meta/tv/{pid}.json','w') as mf:
+              json.dump(meta_obj,mf)
+            with open(f'stream/tv/{pid}.json','w') as sf:
+              json.dump(stream_obj,sf)
+
+          with open('catalog/tv/pluto_gt.json','w') as cf:
+            json.dump({"metas": catalog_metas}, cf)
+
+          print(f"Built {len(metas)} channels")
+          PY
+          python3 build.py
           git config user.name "bot"
           git config user.email "bot@bot.com"
           git add .
-          git commit -m "Nombres reales fix" || true
+          git commit -m "FINAL FIX - working JWT urls" || true
           git push
