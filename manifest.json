@@ -1,11 +1,10 @@
 {
-  "id": "com.camvar.plutogt.gt",
-  "version": "1.0.2",
-  "name": "Pluto GT MX ES",
-  "description": "Pluto TV para GT",
-  "logo": "https://upload.wikimedia.org/wikipedia/commons/5/51/Pluto_TV_logo.svg",
+  "id": "com.camvar.plutogt.real",
+  "version": "2.0.0",
+  "name": "Pluto TV GT - Real",
+  "description": "20 canales reales Pluto TV Guatemala",
   "resources": ["catalog", "meta", "stream"],
   "types": ["tv"],
-  "catalogs": [{"type":"tv","id":"pluto_gt","name":"Pluto GT"}],
-  "behaviorHints": {"configurable": false}
+  "catalogs": [{"type": "tv", "id": "pluto_gt", "name": "Pluto TV GT"}],
+  "idPrefixes": ["pluto_"]
 }
