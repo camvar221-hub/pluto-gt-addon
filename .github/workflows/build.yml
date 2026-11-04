@@ -1,5 +1,8 @@
-name: Build Real Pluto GT - FINAL
-on: [push]
+name: Build
+on:
+  push:
+  schedule:
+    - cron: '0 */3 * * *'
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -7,98 +10,35 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v3
-      - name: Build from working M3U
-        run: |
-          mkdir -p catalog/tv meta/tv stream/tv
-          curl -sL https://i.mjh.nz/PlutoTV/us.m3u8 -o pluto.m3u
-          
-          cat > build.py <<'PY'
-          import re
+      - run: |
+          curl -sL https://i.mjh.nz/PlutoTV/mx.m3u8 -o p.m3u
+          python3 - << 'PY'
+          import re, json, os, pathlib
+          pathlib.Path("catalog/tv").mkdir(parents=True, exist_ok=True)
+          pathlib.Path("meta/tv").mkdir(parents=True, exist_ok=True)
+          pathlib.Path("stream/tv").mkdir(parents=True, exist_ok=True)
           metas=[]
-          catalog=[]
-          count=0
-          with open('pluto.m3u', 'r', encoding='utf-8', errors='ignore') as f:
-              lines=f.readlines()
-          i=0
-          while i < len(lines):
-            line=lines[i].strip()
-            if line.startswith('#EXTINF'):
-              name_match=re.search(r',(.+)$', line)
-              name=name_match.group(1).strip() if name_match else f"Canal {count}"
-              logo_match=re.search(r'tvg-logo="([^"]+)"', line)
-              logo=logo_match.group(1) if logo_match else ""
-              id_match=re.search(r'tvg-id="([^"]+)"', line)
-              tvg_id=id_match.group(1) if id_match else f"ch{count}"
-              # next line is URL
-              if i+1 < len(lines):
+          ch=[]
+          with open("p.m3u",encoding="utf-8",errors="ignore") as f: lines=f.readlines()
+          c=0
+          for i in range(len(lines)):
+            if lines[i].startswith("#EXTINF"):
+              m=re.search(r',(.+)$', lines[i]); name=m.group(1).strip() if m else f"Canal {c}"
+              l=re.search(r'tvg-logo="([^"]+)"', lines[i]); logo=l.group(1) if l else ""
+              if i+1 < len(lines) and lines[i+1].startswith("http"):
                 url=lines[i+1].strip()
-                if url.startswith('http'):
-                  pid=f"pluto_{tvg_id.replace('.','_')}_{count}"
-                  pid=re.sub(r'[^a-zA-Z0-9_]', '_', pid)
-                  # limit to 40 channels para que no sea gigante
-                  if count < 40:
-                    metas.append((pid,name,logo,url))
-                  count+=1
-            i+=1
-
-          # manifest
-          import json, os
-          manifest={
-            "id": "com.camvar.plutogt.real",
-            "version": "3.0.0",
-            "name": "Pluto TV GT - FINAL FIX",
-            "description": "40 canales Pluto TV USA con links firmados - funciona en GT",
-            "resources": ["catalog","meta","stream"],
-            "types": ["tv"],
-            "catalogs": [{"type":"tv","id":"pluto_gt","name":"Pluto TV"}],
-            "idPrefixes": ["pluto_"]
-          }
-          with open('manifest.json','w') as out:
-            json.dump(manifest,out,indent=2)
-
-          catalog_metas=[]
-          for pid,name,logo,url in metas:
-            catalog_metas.append({
-              "id": pid,
-              "type": "tv",
-              "name": name,
-              "poster": logo,
-              "posterShape": "landscape"
-            })
-            meta_obj={
-              "meta": {
-                "id": pid,
-                "type": "tv",
-                "name": name,
-                "poster": logo,
-                "logo": logo,
-                "description": f"{name} - En vivo Pluto TV",
-                "videos": [{"id": f"{pid}:1", "title": f"En Vivo - {name}", "released": "2024-01-01"}]
-              }
-            }
-            stream_obj={
-              "streams": [{
-                "name": "Pluto TV",
-                "title": f"{name} - En Vivo",
-                "url": url,
-                "behaviorHints": {"notWebReady": False}
-              }]
-            }
-            os.makedirs('meta/tv', exist_ok=True)
-            os.makedirs('stream/tv', exist_ok=True)
-            with open(f'meta/tv/{pid}.json','w') as mf:
-              json.dump(meta_obj,mf)
-            with open(f'stream/tv/{pid}.json','w') as sf:
-              json.dump(stream_obj,sf)
-
-          with open('catalog/tv/pluto_gt.json','w') as cf:
-            json.dump({"metas": catalog_metas}, cf)
-
-          print(f"Built {len(metas)} channels")
+                if c<35:
+                  pid=f"pluto_mx_{c}"
+                  ch.append((pid,name,logo,url))
+                c+=1
+          catalog=[]
+          for pid,name,logo,url in ch:
+            catalog.append({"id":pid,"type":"tv","name":name,"poster":logo,"posterShape":"landscape"})
+            json.dump({"meta":{"id":pid,"type":"tv","name":name,"poster":logo,"logo":logo,"description":name,"videos":[{"id":f"{pid}:1","title":name}]}}, open(f"meta/tv/{pid}.json","w"))
+            json.dump({"streams":[{"url":url,"title":name,"name":"Pluto MX"}]}, open(f"stream/tv/{pid}.json","w"))
+          json.dump({"metas":catalog}, open("catalog/tv/pluto_gt.json","w"))
+          json.dump({"id":"com.camvar.plutogt.mx","version":"4.0.0","name":"Pluto TV GT - HECHO","description":"35 canales MX funcionando en GT","resources":["catalog","meta","stream"],"types":["tv"],"catalogs":[{"type":"tv","id":"pluto_gt","name":"Pluto GT"}],"idPrefixes":["pluto_"]}, open("manifest.json","w"))
+          print(f"OK {len(ch)} canales")
           PY
-          python3 build.py
-          git config user.name "bot"
-          git config user.email "bot@bot.com"
-          git add .
-          git commit -m "FINAL FIX - working JWT urls" || true
-          git push
+          git config user.name bot; git config user.email bot@bot.com
+          git add .; git commit -m "hecho mx" || true; git push
