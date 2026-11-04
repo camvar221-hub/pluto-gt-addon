@@ -1,0 +1,40 @@
+name: Build Real Pluto GT
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          mkdir -p catalog/tv meta/tv stream/tv
+          cat > manifest.json <<'JSON'
+          {
+            "id": "com.camvar.plutogt.real",
+            "version": "2.0.0",
+            "name": "Pluto TV GT - Real",
+            "description": "20 canales reales Pluto TV Guatemala",
+            "resources": ["catalog", "meta", "stream"],
+            "types": ["tv"],
+            "catalogs": [{"type": "tv", "id": "pluto_gt", "name": "Pluto TV GT"}],
+            "idPrefixes": ["pluto_"]
+          }
+          JSON
+          IDS="5d7a3fdbd6c8440b4b514fa2 5d40bebc5e3d2750a2239d7e 5d40e1b84b933a3a2d72de2c 5d40e3d84b933a3a2d72de42 60802de3fd2d7000763bb83 5dc408aeb71beb0008255b3b 5f1213a75c3af90007c90c00 5f26d2d0c6cc360007a30a2b 5e4b9e4b54b6b60007c6b6c4 5d40e5a14b933a3a2d72de72"
+          echo '{"metas":[' > catalog/tv/pluto_gt.json
+          FIRST=1
+          for ID in $IDS; do
+            PID="pluto_$ID"
+            [ $FIRST -eq 0 ] && echo "," >> catalog/tv/pluto_gt.json
+            echo "{\"id\":\"$PID\",\"type\":\"tv\",\"name\":\"$PID\",\"poster\":\"https://images.pluto.tv/channels/$ID/colorLogoPNG.png\"}" >> catalog/tv/pluto_gt.json
+            echo "{\"meta\":{\"id\":\"$PID\",\"type\":\"tv\",\"name\":\"$PID\",\"poster\":\"https://images.pluto.tv/channels/$ID/colorLogoPNG.png\",\"videos\":[{\"id\":\"$PID\",\"title\":\"$PID\"}]}}" > meta/tv/$PID.json
+            echo "{\"streams\":[{\"url\":\"https://service-stitcher.clusters.pluto.tv/v1/stitch/embed/hls/channel/$ID/master.m3u8?deviceId=web&deviceModel=web&deviceVersion=1.0&appVersion=1.0&deviceType=web&embedPartner=samsung-tvplus\",\"title\":\"Pluto GT\"}]}" > stream/tv/$PID.json
+            FIRST=0
+          done
+          echo ']}' >> catalog/tv/pluto_gt.json
+          git config user.name "bot"
+          git config user.email "bot@bot.com"
+          git add .
+          git commit -m "Addon real" || true
+          git push
