@@ -1,8 +1,8 @@
 {
   "id": "com.camvar.plutogt.real",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "name": "Pluto TV GT - Real",
-  "description": "20 canales reales Pluto TV Guatemala",
+  "description": "Canales reales Pluto TV Guatemala con nombres",
   "resources": ["catalog", "meta", "stream"],
   "types": ["tv"],
   "catalogs": [{"type": "tv", "id": "pluto_gt", "name": "Pluto TV GT"}],
